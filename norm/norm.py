@@ -1,5 +1,8 @@
 from __future__ import unicode_literals
 
+from decimal import Decimal
+
+
 QUERY_TYPE = b'qt'
 COLUMN = b'c'
 FROM = b'f'
@@ -123,7 +126,30 @@ def compile(chain, query_type):
     return query
 
 
-class Query(object):
+def is_number(test):
+    types = [int, float, Decimal]
+    for type in types:
+        if isinstance(test, type):
+            return True
+    return False
+
+
+class Compilable(object):
+
+    @property
+    def compile(self):
+        binds = self.binds
+        compiled_binds = {}
+        for k, v in binds.iteritems():
+            if v == None:
+                v = 'null'
+            elif not is_number(v):
+                v = "'%s'" % v
+            compiled_binds[k] = v
+        return self.query % compiled_binds
+
+
+class Query(Compilable):
     query_type = None
     bind_prefix = '%('
     bind_postfix = ')s'
@@ -302,7 +328,7 @@ class _default(object):
     pass
 
 
-class INSERT(object):
+class INSERT(Compilable):
     bind_prefix = '%('
     bind_postfix = ')s'
     defaultdefault = None

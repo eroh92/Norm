@@ -1,5 +1,7 @@
 from __future__ import unicode_literals
 
+import datetime
+
 from norm import SELECT
 from norm import UPDATE
 from norm import DELETE
@@ -15,6 +17,7 @@ def test_simple_select():
         "  FROM table1 AS tbl1",
         " WHERE tbl1.col2 = 'testval';"])
     assert s.query == expected
+    assert s.compile == expected
 
 
 def test_simple_inner_join_select():
@@ -33,6 +36,7 @@ def test_simple_inner_join_select():
         "       ON tbl1.tid = tbl2.tid",
         " WHERE tbl1.col2 = 'testval';"])
     assert s.query == expected
+    assert s.compile == expected
 
 
 def test_simple_outer_join_select():
@@ -51,6 +55,7 @@ def test_simple_outer_join_select():
         "       ON tbl1.tid = tbl2.tid",
         " WHERE tbl1.col2 = 'testval';"])
     assert s.query == expected
+    assert s.compile == expected
 
 
 def test_multiple_where():
@@ -65,6 +70,7 @@ def test_multiple_where():
         "       tbl1.col3 = 'otherval';"])
 
     assert s.query == expected
+    assert s.compile == expected
 
 
 def test_all_select_methods():
@@ -93,6 +99,7 @@ def test_all_select_methods():
         "OFFSET 3;"])
 
     assert s.query == expected
+    assert s.compile == expected
 
 
 def test_overwriting_select_methods_overwrite():
@@ -126,6 +133,7 @@ def test_overwriting_select_methods_overwrite():
         "OFFSET 3;"])
 
     assert s.query == expected
+    assert s.compile == expected
 
 
 def test_binds():
@@ -140,9 +148,15 @@ def test_binds():
         "  FROM table1 AS tbl1",
         " WHERE tbl1.col2 = 'testval' AND",
         "       tbl1.col3 = %(bind1)s;"])
+    compiled1 = '\n'.join([
+        "SELECT tbl1.column1 AS col1",
+        "  FROM table1 AS tbl1",
+        " WHERE tbl1.col2 = 'testval' AND",
+        "       tbl1.col3 = 'bind1value';"])
 
     assert s1.query == expected1
     assert s1.binds == {'bind1': 'bind1value'}
+    assert s1.compile == compiled1
 
 
 def test_generate_binds():
@@ -166,6 +180,15 @@ def test_generate_binds():
         "       salary = %(salary_bind_3)s AND",
         "       tbl1.col3 = %(bind1)s;"])
 
+    compiled1_v1 = '\n'.join([
+        "SELECT tbl1.column1 AS col1",
+        "  FROM table1 AS tbl1",
+        " WHERE id = 1 AND",
+        "       name = 'bossanova' AND",
+        "       occupation = 'rascal' AND",
+        "       salary = null AND",
+        "       tbl1.col3 = 'bind1value';"])
+
     expected1_v2 = '\n'.join([
         "SELECT tbl1.column1 AS col1",
         "  FROM table1 AS tbl1",
@@ -174,8 +197,18 @@ def test_generate_binds():
         "       salary = %(salary_bind_2)s AND",
         "       occupation = %(occupation_bind_3)s AND",
         "       tbl1.col3 = %(bind1)s;"])
+
+    compiled1_v2 = '\n'.join([
+        "SELECT tbl1.column1 AS col1",
+        "  FROM table1 AS tbl1",
+        " WHERE id = 1 AND",
+        "       name = 'bossanova' AND",
+        "       salary = null AND",
+        "       occupation = 'rascal' AND",
+        "       tbl1.col3 = 'bind1value';"])
     if s1.query.find('salary') > s1.query.find('occupation'):
         assert s1.query == expected1_v1
+        assert s1.compile == compiled1_v1
         assert s1.binds == {'bind1': 'bind1value',
                             'id_bind_0': 1,
                             'name_bind_1': 'bossanova',
@@ -184,6 +217,7 @@ def test_generate_binds():
 
     else:
         assert s1.query == expected1_v2
+        assert s1.compile == compiled1_v2
         assert s1.binds == {'bind1': 'bind1value',
                             'id_bind_0': 1,
                             'name_bind_1': 'bossanova',
@@ -250,14 +284,19 @@ def test_generative_query():
 
     assert s5.query == expected5
     assert s5.binds == {'test': 'test2', 'val': 'nope'}
+    assert s5.compile == expected5
     assert s4.query == expected4
     assert s4.binds == {'val': 'whatevs'}
+    assert s4.compile == expected4
     assert s3.query == expected3
     assert s3.binds == {'val': 'whatevs'}
+    assert s3.compile == expected3
     assert s2.query == expected2
     assert s2.binds == {}
+    assert s2.compile == expected2
     assert s1.query == expected1
     assert s1.binds == {}
+    assert s1.compile == expected1
 
 
 def test_simple_update():
@@ -270,6 +309,7 @@ def test_simple_update():
         "       col2 = 'test2';"])
 
     assert u.query == expected
+    assert u.compile == expected
 
 
 def test_update_one_row():
@@ -282,9 +322,15 @@ def test_update_one_row():
         "   SET col1 = 'test',",
         "       col2 = 'test2'",
         " WHERE id = %(id_bind_0)s;"])
+    compiled = '\n'.join([
+        "UPDATE table1",
+        "   SET col1 = 'test',",
+        "       col2 = 'test2'",
+        " WHERE id = 5;"])
 
     assert u.query == expected
     assert u.binds == {'id_bind_0': 5}
+    assert u.compile == compiled
 
 
 def test_named_arg_update():
@@ -297,10 +343,16 @@ def test_named_arg_update():
         "   SET col1 = %(col1_bind)s,",
         "       col2 = 'test2'",
         " WHERE id = %(id_bind_1)s;"])
+    compiled = '\n'.join([
+        "UPDATE table1",
+        "   SET col1 = 'test',",
+        "       col2 = 'test2'",
+        " WHERE id = 5;"])
 
     assert u.query == expected
     assert u.binds == {'col1_bind': 'test',
                        'id_bind_1': 5}
+    assert u.compile == compiled
 
 
 def test_update_returning():
@@ -312,6 +364,10 @@ def test_update_returning():
         "UPDATE table1",
         "   SET col1 = %(col1_bind)s",
         "RETURNING test, test1;"])
+    assert u.compile == '\n'.join([
+        "UPDATE table1",
+        "   SET col1 = 'test'",
+        "RETURNING test, test1;"])
 
 
 def test_simple_delete():
@@ -319,6 +375,7 @@ def test_simple_delete():
 
     assert d.query == 'DELETE FROM table1;'
     assert d.binds == {}
+    assert d.compile == 'DELETE FROM table1;'
 
 
 def test_delete_where():
@@ -329,6 +386,9 @@ def test_delete_where():
         "DELETE FROM table2",
         " WHERE x > 5;"])
     assert d.binds == {}
+    assert d.compile == '\n'.join([
+        "DELETE FROM table2",
+        " WHERE x > 5;"])
 
 
 def test_delete_where_autobind():
@@ -339,6 +399,9 @@ def test_delete_where_autobind():
         "DELETE FROM table3",
         " WHERE x = %(x_bind_0)s;"])
     assert d.binds == {'x_bind_0': 25}
+    assert d.compile == '\n'.join([
+        "DELETE FROM table3",
+        " WHERE x = 25;"])
 
 
 def test_delete_returning():
@@ -351,9 +414,14 @@ def test_delete_returning():
         " WHERE x = %(x_bind_0)s",
         "RETURNING this, that;"])
     assert d.binds == {'x_bind_0': 25}
+    assert d.compile == '\n'.join([
+        "DELETE FROM table3",
+        " WHERE x = 25",
+        "RETURNING this, that;"])
 
 row1 = {'name': 'justin', 'zipcode': 23344}
 row2 = {'name': 'nintendo', 'phone': '1112223333'}
+row3 = {'name': 'rob', 'date': datetime.date(2013, 10, 1)}
 
 
 def test_basic_insert():
@@ -362,6 +430,8 @@ def test_basic_insert():
     assert i.binds == {'name_0': 'justin', 'zipcode_0': 23344}
     assert i.query == ('INSERT INTO table1 '
                        '(name, zipcode) VALUES (%(name_0)s, %(zipcode_0)s);')
+    assert i.compile == ("INSERT INTO table1 "
+                         "(name, zipcode) VALUES ('justin', 23344);")
 
 
 def test_multi_insert():
@@ -377,6 +447,39 @@ def test_multi_insert():
                        '(name, phone, zipcode) '
                        'VALUES (%(name_0)s, %(phone_0)s, %(zipcode_0)s),\n'
                        '       (%(name_1)s, %(phone_1)s, %(zipcode_1)s);')
+    assert i.compile == ("INSERT INTO table1 "
+                         "(name, phone, zipcode) "
+                         "VALUES ('justin', null, 23344),\n"
+                         "       ('nintendo', '1112223333', null);")
+
+
+def test_multi_insert_2():
+    i = INSERT('table1', data=[row1, row2, row3])
+    assert i.binds == {'name_0': 'justin',
+                       'phone_0': None,
+                       'zipcode_0': 23344,
+                       'date_0': None,
+                       'name_1': 'nintendo',
+                       'phone_1': '1112223333',
+                       'zipcode_1': None,
+                       'date_1': None,
+                       'name_2': 'rob',
+                       'phone_2': None,
+                       'zipcode_2': None,
+                       'date_2': datetime.date(2013, 10, 1)}
+    assert i.query == ('INSERT INTO table1 '
+                       '(date, name, phone, zipcode) '
+                       'VALUES (%(date_0)s, %(name_0)s, %(phone_0)s, '
+                       '%(zipcode_0)s),\n'
+                       '       (%(date_1)s, %(name_1)s, %(phone_1)s, '
+                       '%(zipcode_1)s),\n'
+                       '       (%(date_2)s, %(name_2)s, %(phone_2)s, '
+                       '%(zipcode_2)s);')
+    assert i.compile == ("INSERT INTO table1 "
+                         "(date, name, phone, zipcode) "
+                         "VALUES (null, 'justin', null, 23344),\n"
+                         "       (null, 'nintendo', '1112223333', null),\n"
+                         "       ('2013-10-01', 'rob', null, null);")
 
 
 def test_setting_default():
@@ -394,6 +497,8 @@ def test_setting_columns():
     assert i.binds == {'name_0': 'justin', 'address_0': None}
     assert i.query == ('INSERT INTO table1 '
                        '(name, address) VALUES (%(name_0)s, %(address_0)s);')
+    assert i.compile == ("INSERT INTO table1 "
+                         "(name, address) VALUES ('justin', null);")
 
 
 def test_setting_columns_default():
@@ -406,6 +511,11 @@ def test_setting_columns_default():
                        'VALUES (%(phone_0)s),\n'
                        '       (%(phone_1)s);')
 
+    assert i.compile == ("INSERT INTO table1 "
+                         "(phone) "
+                         "VALUES ('blah'),\n"
+                         "       ('1112223333');")
+
 
 def test_insert_no_columns():
     i = INSERT('table1', data=[row1, row2], columns=['phone'], default='blah')
@@ -417,6 +527,11 @@ def test_insert_no_columns():
                        'VALUES (%(phone_0)s),\n'
                        '       (%(phone_1)s);')
 
+    assert i.compile == ("INSERT INTO table1 "
+                         "(phone) "
+                         "VALUES ('blah'),\n"
+                         "       ('1112223333');")
+
 
 def test_insert_default_values():
     i = INSERT('table1')
@@ -424,3 +539,5 @@ def test_insert_default_values():
     assert i.binds == {}
     assert i.query == ('INSERT INTO table1 '
                        ' DEFAULT VALUES;')
+    assert i.compile == ('INSERT INTO table1 '
+                         ' DEFAULT VALUES;')
