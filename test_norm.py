@@ -434,6 +434,18 @@ def test_basic_insert():
                          "(name, zipcode) VALUES ('justin', 23344);")
 
 
+def test_basic_insert_with_returning():
+    i = INSERT('table1', data=row1, returning=['id'])
+
+    assert i.binds == {'name_0': 'justin', 'zipcode_0': 23344}
+    assert i.query == ('INSERT INTO table1 '
+                       '(name, zipcode) VALUES (%(name_0)s, %(zipcode_0)s)\n'
+                       'RETURNING id;')
+    assert i.compile == ("INSERT INTO table1 "
+                         "(name, zipcode) VALUES ('justin', 23344)\n"
+                         "RETURNING id;")
+
+
 def test_multi_insert():
     i = INSERT('table1', data=[row1, row2])
     assert i.binds == {'name_0': 'justin',
